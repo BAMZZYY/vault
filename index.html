@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4x4 Shape Sudoku</title>
+  <style>
+    :root{
+      --panel:#5b5b5b;
+      --cell:#6a6a6a;
+      --border:#8f8f8f;
+      --text:#f3f3f3;
+      --muted:#dddddd;
+      --accent:#ffffff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background:linear-gradient(180deg,#565656,#444);
+      color:var(--text);
+      font-family:Arial, Helvetica, sans-serif;
+    }
+    .wrap{
+      width:min(1100px,100%);
+      background:var(--panel);
+      border:2px solid var(--border);
+      border-radius:18px;
+      padding:20px;
+      box-shadow:0 14px 36px rgba(0,0,0,.28);
+    }
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .title{
+      font-size:28px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .stats{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .pill{
+      background:var(--cell);
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:8px 14px;
+      font-size:14px;
+    }
+    .game{
+      display:grid;
+      grid-template-columns:1fr 1fr 220px;
+      gap:18px;
+      align-items:start;
+    }
+    .board-wrap h3{
+      margin:0 0 8px;
+      font-size:16px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      color:var(--muted);
+    }
+    .board{
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:0;
+      border:3px solid var(--accent);
+      border-radius:12px;
+      overflow:hidden;
+      background:#777;
+      max-width:480px;
+      aspect-ratio:1 / 1;
+    }
+    .cell{
+      border:1px solid var(--border);
+      background:var(--cell);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:54px;
+      cursor:pointer;
+      user-select:none;
+      transition:background .12s ease, transform .08s ease;
+      min-height:0;
+    }
+    .cell:hover{ transform:scale(1.02); }
+    .static-cell{ cursor:default; }
+    .static-cell:hover{ transform:none; }
+    .fixed{
+      background:#616161;
+      cursor:default;
+      font-weight:700;
+    }
+    .check-bad{ background:#876565; }
+    .check-good{ background:#688168; }
+    .r1{ border-bottom:3px solid var(--accent); }
+    .c1{ border-right:3px solid var(--accent); }
+    .side{ display:grid; gap:14px; }
+    .panel{
+      background:#636363;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:14px;
+    }
+    .panel h3{
+      margin:0 0 10px;
+      font-size:16px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    button{
+      border:none;
+      border-radius:10px;
+      background:#ededed;
+      color:#333;
+      font-weight:700;
+      cursor:pointer;
+      padding:11px 14px;
+      font-size:14px;
+    }
+    .status{
+      line-height:1.45;
+      color:var(--muted);
+      min-height:44px;
+      font-size:14px;
+    }
+    .legend{
+      font-size:14px;
+      line-height:1.5;
+      color:var(--muted);
+    }
+    .bar-wrap{
+      height:12px;
+      background:#444;
+      border:1px solid var(--border);
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .bar{
+      height:100%;
+      width:100%;
+      background:#f0f0f0;
+      transform-origin:left center;
+    }
+    @media (max-width:980px){
+      .game{ grid-template-columns:1fr; }
+      .board{ max-width:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">4x4 Shape Sudoku</div>
+      <div class="stats">
+        <div class="pill">Time: <span id="time">35</span>s</div>
+        <div class="pill">Filled: <span id="filled">0</span>/<span id="goalFill">12</span></div>
+        <div class="pill">Starting Clues: <span id="clueCount">4</span></div>
+      </div>
+    </div>
+
+    <div class="game">
+      <div class="board-wrap">
+        <h3>Your Board</h3>
+        <div class="board" id="board"></div>
+      </div>
+
+      <div class="board-wrap">
+        <h3>Correct Solution</h3>
+        <div class="board" id="solutionBoard"></div>
+      </div>
+
+      <div class="side">
+        <div class="panel">
+          <h3>Controls</h3>
+          <div style="display:grid; gap:10px;">
+            <button id="restartBtn">New Random Puzzle</button>
+            <button id="validateBtn">Validate</button>
+            <button id="solveBtn">Solve</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Status</h3>
+          <div class="status" id="status">Click any empty square to cycle through the shapes. Press Validate when you think it is solved.</div>
+          <div class="bar-wrap" style="margin-top:10px;"><div class="bar" id="timeBar"></div></div>
+        </div>
+
+        <div class="panel">
+          <h3>Rules</h3>
+          <div class="legend">
+            Every row, column, and 2x2 box must contain exactly one of each shape:<br>
+            ▲ ■ ● —
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>How It Works</h3>
+          <div class="legend">
+            Each round starts with 4 random clue cells taken from a valid completed board.<br>
+            Click an editable cell to cycle: blank → ▲ → ■ → ● → — → blank<br>
+            Press Solve to compare your board against the correct answer.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const SHAPES = ["▲","■","●","—"];
+  const CLUE_COUNT = 4;
+
+  const BASE_SOLUTION = [
+    [0,1,2,3],
+    [2,3,0,1],
+    [1,0,3,2],
+    [3,2,1,0]
+  ];
+
+  const state = {
+    board: [],
+    start: [],
+    solution: [],
+    timeLeft: 35,
+    timer: null,
+    running: false
+  };
+
+  const boardEl = document.getElementById("board");
+  const solutionBoardEl = document.getElementById("solutionBoard");
+  const timeEl = document.getElementById("time");
+  const filledEl = document.getElementById("filled");
+  const goalFillEl = document.getElementById("goalFill");
+  const clueCountEl = document.getElementById("clueCount");
+  const statusEl = document.getElementById("status");
+  const timeBarEl = document.getElementById("timeBar");
+  const restartBtn = document.getElementById("restartBtn");
+  const validateBtn = document.getElementById("validateBtn");
+  const solveBtn = document.getElementById("solveBtn");
+
+  function cloneBoard(src){ return src.map(row => [...row]); }
+
+  function shuffle(arr){
+    const a = [...arr];
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function generateSolution(){
+    const symbolMap = shuffle(SHAPES);
+    const rowBands = shuffle([[0,1],[2,3]]);
+    const rows = rowBands.flatMap(band => shuffle(band));
+    const colBands = shuffle([[0,1],[2,3]]);
+    const cols = colBands.flatMap(band => shuffle(band));
+
+    const grid = Array.from({length:4}, () => Array(4).fill(null));
+    for(let r=0;r<4;r++){
+      for(let c=0;c<4;c++){
+        grid[r][c] = symbolMap[BASE_SOLUTION[rows[r]][cols[c]]];
+      }
+    }
+    return grid;
+  }
+
+  function makePuzzle(solution){
+    const positions = shuffle([...Array(16).keys()]);
+    const clues = new Set(positions.slice(0, CLUE_COUNT));
+    const start = Array.from({length:4}, () => Array(4).fill(null));
+    for(let i=0;i<16;i++){
+      const r = Math.floor(i / 4);
+      const c = i % 4;
+      if(clues.has(i)) start[r][c] = solution[r][c];
+    }
+    return start;
+  }
+
+  function cellClass(r, c, fixed){
+    let cls = "cell";
+    if (fixed) cls += " fixed";
+    if (r === 1) cls += " r1";
+    if (c === 1) cls += " c1";
+    return cls;
+  }
+
+  function clearCheckColors(){
+    document.querySelectorAll("#board .cell, #solutionBoard .cell").forEach(el => {
+      el.classList.remove("check-bad");
+      el.classList.remove("check-good");
+    });
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = "";
+    solutionBoardEl.innerHTML = "";
+    for(let r=0; r<4; r++){
+      for(let c=0; c<4; c++){
+        const value = state.board[r][c];
+        const fixed = state.start[r][c] !== null;
+
+        const cell = document.createElement("button");
+        cell.className = cellClass(r, c, fixed);
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        cell.textContent = value || "";
+        cell.addEventListener("click", () => onCellClick(r, c));
+        boardEl.appendChild(cell);
+
+        const solCell = document.createElement("div");
+        solCell.className = cellClass(r, c, fixed) + " static-cell";
+        solCell.dataset.r = r;
+        solCell.dataset.c = c;
+        solCell.textContent = "";
+        solutionBoardEl.appendChild(solCell);
+      }
+    }
+    updateHud();
+  }
+
+  function getCellEl(r, c){
+    return boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  }
+
+  function getSolutionCellEl(r, c){
+    return solutionBoardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  }
+
+  function updateHud(){
+    timeEl.textContent = state.timeLeft;
+    timeBarEl.style.transform = `scaleX(${Math.max(0, state.timeLeft / 35)})`;
+    let filled = 0;
+    let clueCount = 0;
+    for(let r=0; r<4; r++){
+      for(let c=0; c<4; c++){
+        if(state.start[r][c] !== null) clueCount++;
+        if(state.start[r][c] === null && state.board[r][c]) filled++;
+      }
+    }
+    filledEl.textContent = filled;
+    clueCountEl.textContent = clueCount;
+    goalFillEl.textContent = 16 - clueCount;
+  }
+
+  function setStatus(text){
+    statusEl.textContent = text;
+  }
+
+  function clearSolutionBoard(){
+    solutionBoardEl.querySelectorAll('.cell').forEach(el => {
+      el.textContent = '';
+      el.classList.remove('check-good','check-bad');
+    });
+  }
+
+  function startGame(){
+    clearInterval(state.timer);
+    state.solution = generateSolution();
+    state.start = makePuzzle(state.solution);
+    state.board = cloneBoard(state.start);
+    state.timeLeft = 35;
+    state.running = true;
+    buildBoard();
+    clearCheckColors();
+    clearSolutionBoard();
+    setStatus("Click any empty square to cycle through the shapes. Press Validate when you think it is solved.");
+
+    state.timer = setInterval(() => {
+      if(!state.running) return;
+      state.timeLeft--;
+      updateHud();
+      if(state.timeLeft <= 0){
+        state.timeLeft = 0;
+        updateHud();
+        endGame(false);
+      }
+    }, 1000);
+  }
+
+  function endGame(win){
+    clearInterval(state.timer);
+    state.running = false;
+    setStatus(win ? "You solved it in time." : "Time ran out.");
+  }
+
+  function nextValue(current){
+    const values = [null, ...SHAPES];
+    const idx = values.indexOf(current);
+    return values[(idx + 1) % values.length];
+  }
+
+  function onCellClick(r, c){
+    if(!state.running) return;
+    if(state.start[r][c] !== null){
+      setStatus("That square is fixed.");
+      return;
+    }
+
+    clearCheckColors();
+    state.board[r][c] = nextValue(state.board[r][c]);
+    getCellEl(r, c).textContent = state.board[r][c] || "";
+    updateHud();
+    setStatus("Keep going. Press Validate when ready.");
+  }
+
+  function isCompleteAndValid(){
+    for(let r=0; r<4; r++){
+      const row = state.board[r];
+      if(row.some(v => v === null)) return false;
+      if(new Set(row).size !== 4) return false;
+    }
+
+    for(let c=0; c<4; c++){
+      const col = [state.board[0][c], state.board[1][c], state.board[2][c], state.board[3][c]];
+      if(col.some(v => v === null)) return false;
+      if(new Set(col).size !== 4) return false;
+    }
+
+    for(let br=0; br<4; br+=2){
+      for(let bc=0; bc<4; bc+=2){
+        const box = [
+          state.board[br][bc], state.board[br][bc+1],
+          state.board[br+1][bc], state.board[br+1][bc+1]
+        ];
+        if(box.some(v => v === null)) return false;
+        if(new Set(box).size !== 4) return false;
+      }
+    }
+
+    return true;
+  }
+
+  function validateBoard(){
+    if(!state.running) return;
+
+    clearCheckColors();
+
+    let hasBlanks = false;
+    for(let r=0; r<4; r++){
+      for(let c=0; c<4; c++){
+        if(state.board[r][c] === null) hasBlanks = true;
+      }
+    }
+
+    if(hasBlanks){
+      for(let r=0; r<4; r++){
+        for(let c=0; c<4; c++){
+          const cell = getCellEl(r, c);
+          if(state.board[r][c] === null && state.start[r][c] === null){
+            cell.classList.add("check-bad");
+          }
+        }
+      }
+      setStatus("Not solved yet. Fill every square before validating.");
+      return;
+    }
+
+    if(isCompleteAndValid()){
+      document.querySelectorAll("#board .cell").forEach(cell => {
+        if(!cell.classList.contains("fixed")) cell.classList.add("check-good");
+      });
+      endGame(true);
+      return;
+    }
+
+    document.querySelectorAll("#board .cell").forEach(cell => {
+      if(!cell.classList.contains("fixed")) cell.classList.add("check-bad");
+    });
+    setStatus("That arrangement is not a valid Sudoku solution. Try a different setup.");
+  }
+
+  function solveBoard(){
+    clearInterval(state.timer);
+    state.running = false;
+    clearCheckColors();
+
+    const playerValid = isCompleteAndValid();
+
+    for(let r=0; r<4; r++){
+      for(let c=0; c<4; c++){
+        const solCell = getSolutionCellEl(r, c);
+        solCell.textContent = state.solution[r][c] || '';
+      }
+    }
+
+    if(playerValid){
+      document.querySelectorAll("#board .cell").forEach(cell => {
+        if(!cell.classList.contains("fixed")) cell.classList.add("check-good");
+      });
+      setStatus("Your board is a valid solution too. The right board shows another valid solution generated for this puzzle.");
+      return;
+    }
+
+    for(let r=0; r<4; r++){
+      for(let c=0; c<4; c++){
+        const playerCell = getCellEl(r, c);
+        if(state.start[r][c] === null){
+          if(state.board[r][c] === state.solution[r][c]) {
+            playerCell.classList.add('check-good');
+          } else {
+            playerCell.classList.add('check-bad');
+          }
+        }
+      }
+    }
+
+    setStatus("Comparison shown. Left board is your attempt. Right board is one valid solution for this puzzle.");
+  }
+
+  restartBtn.addEventListener("click", startGame);
+  validateBtn.addEventListener("click", validateBoard);
+  solveBtn.addEventListener("click", solveBoard);
+  startGame();
+})();
+</script>
+</body>
+</html>
