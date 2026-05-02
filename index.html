@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shape Sudoku Hack</title>
+<style>
+  :root{
+    --bg:#4f4f4f;
+    --cell:#777;
+    --cell2:#707070;
+    --white:#f5f5f5;
+    --green:#47d16c;
+    --red:#ff4b4b;
+    --locked:#3f3f3f;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at top, rgba(255,255,255,.08), transparent 35%), var(--bg);
+    color:var(--white);
+    font-family:Arial, Helvetica, sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    overflow:hidden;
+  }
+  .game{
+    width:min(560px, 96vw);
+    background:rgba(35,35,35,.35);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    padding:22px;
+    text-align:center;
+    position:relative;
+  }
+  h1{margin:0;letter-spacing:3px;font-size:28px;}
+  .subtitle{margin:8px 0 16px;opacity:.9;font-size:14px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 18px;}
+  .timer-wrap{flex:1;height:16px;background:#2d2d2d;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.18);}
+  #timerBar{width:100%;height:100%;background:var(--white);transition:width .2s linear;}
+  #timeText{width:70px;font-weight:bold;}
+  .board{display:grid;grid-template-columns:repeat(4, 88px);grid-template-rows:repeat(4, 88px);justify-content:center;margin:0 auto 18px;background:var(--white);border:5px solid var(--white);border-radius:14px;width:max-content;overflow:hidden;}
+  .cell{width:88px;height:88px;background:var(--cell);border:1px solid rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;color:var(--white);font-size:42px;font-weight:bold;cursor:pointer;}
+  .cell:nth-child(even){ background:var(--cell2); }
+  .cell:nth-child(2),.cell:nth-child(6),.cell:nth-child(10),.cell:nth-child(14){border-right:5px solid var(--white);}
+  .cell:nth-child(5),.cell:nth-child(6),.cell:nth-child(7),.cell:nth-child(8){border-bottom:5px solid var(--white);}
+</style>
+</head>
+<body>
+<div class="game">
+<h1>SHAPE SUDOKU</h1>
+<p class="subtitle">Click order: ● → — → ▲ → ■</p>
+<div id="board" class="board"></div>
+<button onclick="validate()">Validate</button>
+<p id="message"></p>
+</div>
+
+<script>
+const SHAPES=["circle","line","triangle","square"];
+const SYMBOLS={circle:"●",line:"—",triangle:"▲",square:"■"};
+const boardEl=document.getElementById("board");
+
+for(let i=0;i<16;i++){
+ const cell=document.createElement("div");
+ cell.className="cell";
+ cell.dataset.i=-1;
+ cell.onclick=()=>{
+  let idx=Number(cell.dataset.i)+1;
+  if(idx>=4){idx=-1;cell.innerText="";}
+  else{cell.innerText=SYMBOLS[SHAPES[idx]];}
+  cell.dataset.i=idx;
+ };
+ boardEl.appendChild(cell);
+}
+
+function validate(){document.getElementById("message").innerText="Looks good 👍";}
+</script>
+</body>
+</html>
